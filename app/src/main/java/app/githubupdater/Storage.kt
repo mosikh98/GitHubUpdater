@@ -19,13 +19,26 @@ class RepoStore(context: Context) {
         get() = prefs.getBoolean("auto_check", true)
         set(v) { prefs.edit().putBoolean("auto_check", v).apply() }
 
-    fun load(): List<TrackedRepo> = synchronized(LOCK) { read() }
+    fun load(): List<TrackedRepo> = synchronized(LOCK) { seedOnce(); read() }
 
     fun update(transform: (List<TrackedRepo>) -> List<TrackedRepo>) = synchronized(LOCK) {
-        val list = transform(read())
+        seedOnce()
+        write(transform(read()))
+    }
+
+    private fun write(list: List<TrackedRepo>) {
         val arr = JSONArray()
         list.forEach { arr.put(it.toJson()) }
         prefs.edit().putString("repos", arr.toString()).apply()
+    }
+
+    /** Adds the default repos once (existing entries are kept, nothing is re-added later). */
+    private fun seedOnce() {
+        if (prefs.getBoolean("seeded_v1", false)) return
+        val current = read()
+        val have = current.map { it.key }.toSet()
+        write(current + DEFAULT_REPOS.filter { it.key !in have })
+        prefs.edit().putBoolean("seeded_v1", true).apply()
     }
 
     fun notified(): Set<String> = synchronized(LOCK) {

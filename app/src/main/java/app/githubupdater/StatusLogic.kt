@@ -38,6 +38,7 @@ object StatusLogic {
     fun compute(repo: TrackedRepo, installedVersion: String?): Status {
         val latest = repo.latest
             ?: return if (repo.error != null) Status.Error else Status.Unchecked
+        if (repo.packageName == null) return Status.PackageUnknown
         if (installedVersion == null) return Status.NotInstalled
         // If the installed build is the one we downloaded for a tag, trust that tag.
         val effective =

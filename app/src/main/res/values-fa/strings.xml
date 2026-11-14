@@ -26,7 +26,7 @@
     <string name="download_install">دانلود و نصب</string>
     <string name="update_now">آپدیت</string>
     <string name="downloading">در حال دانلود… %1$d%%</string>
-    <string name="no_apk">در این ریلیز فایل APK وجود ندارد</string>
+    <string name="no_apk">در این ریلیز APK سازگار با این گوشی وجود ندارد</string>
     <string name="open_github">گیت‌هاب</string>
     <string name="release_notes">توضیحات نسخه</string>
     <string name="show_more">بیشتر</string>
@@ -49,4 +49,7 @@
     <string name="notif_channel">آپدیت اپ‌ها</string>
     <string name="notif_one">آپدیت موجود است: %1$s</string>
     <string name="notif_many">%1$d آپدیت موجود است</string>
+    <string name="pick_app">انتخاب اپ نصب‌شده</string>
+    <string name="search">جستجو</string>
+    <string name="status_package_unknown">نام پکیج مشخص نیست</string>
 </resources>

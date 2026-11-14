@@ -3,7 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val keystorePath: String? = System.getenv("KEYSTORE_FILE")?.takeIf { File(it).exists() }
+// Optional override (CI secrets). Otherwise the bundled fixed key in app/signing is used.
+val envKeystore: String? = System.getenv("KEYSTORE_FILE")?.takeIf { File(it).exists() }
 
 android {
     namespace = "app.githubupdater"
@@ -13,17 +14,22 @@ android {
         applicationId = "app.githubupdater"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
+        versionName = System.getenv("VERSION_NAME") ?: "1.0.0"
     }
 
     signingConfigs {
-        if (keystorePath != null) {
-            create("release") {
-                storeFile = File(keystorePath)
+        create("release") {
+            if (envKeystore != null) {
+                storeFile = File(envKeystore)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
+            } else {
+                storeFile = file("signing/release.keystore")
+                storePassword = "githubupdater"
+                keyAlias = "updater"
+                keyPassword = "githubupdater"
             }
         }
     }
@@ -31,11 +37,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = if (keystorePath != null) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

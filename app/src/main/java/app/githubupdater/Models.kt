@@ -26,4 +26,21 @@ data class TrackedRepo(
     val key: String get() = fullName.lowercase()
 }
 
-enum class Status { Unchecked, Error, NotInstalled, UpdateAvailable, UpToDate }
+/** Repos added on first launch. [packageName] is only filled in where it is well known. */
+val DEFAULT_REPOS = listOf(
+    TrackedRepo("CluvexStudio", "ZedSecure"),
+    TrackedRepo("patterniha", "PattNG"),
+    TrackedRepo("WhiteDNS", "WhiteVPN"),
+    TrackedRepo("mlmvpn", "mlmvpn_android"),
+    TrackedRepo("2dust", "v2rayng", packageName = "com.v2ray.ang"),
+    TrackedRepo("GFW-knocker", "MahsaNG"),
+    TrackedRepo("bia-pain-bache", "BPB-VPN"),
+    TrackedRepo("WhiteDNS", "WhiteAestherMobile"),
+    TrackedRepo("WhiteDNS", "WhiteDNS-Android"),
+    TrackedRepo("WhiteDNS", "WhiteDNS-cleanip-finder"),
+    TrackedRepo("hiddify", "hiddify-app", packageName = "app.hiddify.com"),
+)
+
+enum class Status { Unchecked, Error, PackageUnknown, NotInstalled, UpdateAvailable, UpToDate }
+
+data class AppEntry(val label: String, val pkg: String)

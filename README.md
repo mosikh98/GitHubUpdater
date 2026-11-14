@@ -6,16 +6,18 @@
 
 ## ساخت APK
 1. این پوشه را در یک ریپوی گیت‌هاب push کنید (شاخهٔ `main`).
-2. در تب **Actions** منتظر workflow به نام *Build APK* بمانید و فایل `GitHubUpdater.apk` را از Artifacts بردارید.
-3. برای انتشار در Releases یک تگ بسازید: `git tag v1.0.0 && git push origin v1.0.0`
+2. با هر push، workflow به نام *Build APK* اجرا می‌شود و APK را خودکار در بخش **Releases** ریپو منتشر می‌کند (تگ `v1.0.<شمارهٔ بیلد>`). همان فایل در Artifacts هم هست.
+3. اگر انتشار خطای دسترسی داد: Settings ← Actions ← General ← Workflow permissions ← **Read and write permissions**.
 
 یا پوشه را در Android Studio باز کنید (JDK 17، Gradle 8.9).
 
-## امضا (برای آپدیت روی نسخهٔ قبلی)
-اندروید فقط APK هم‌امضا را روی نسخهٔ نصب‌شده آپدیت می‌کند. اگر Secrets زیر را در ریپو بسازید، همهٔ بیلدها با یک کلید ثابت امضا می‌شوند؛ وگرنه با کلید debug (که هر بار عوض می‌شود) امضا می‌شوند:
-`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+با افزودن همین ریپو به خود برنامه، گیت‌هاب آپدیتر خودش را هم آپدیت می‌کند.
 
-ساخت کلید: `keytool -genkeypair -v -keystore release.jks -alias key -keyalg RSA -keysize 2048 -validity 10000` و سپس `base64 -w0 release.jks` برای `KEYSTORE_BASE64`.
+## امضا (ثابت)
+کلید امضا در `app/signing/release.keystore` داخل پروژه است و همهٔ بیلدها با همین یک کلید امضا می‌شوند، پس هر نسخه روی نسخهٔ قبلی آپدیت می‌شود.
+(رمز: `githubupdater` ، alias: `updater`)
+
+این کلید در ریپو عمومی است؛ برای استفادهٔ شخصی مشکلی ندارد. اگر کلید خصوصی می‌خواهید، چهار Secret با نام‌های `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` بسازید؛ در این صورت به‌جای کلید داخل پروژه از آن‌ها استفاده می‌شود.
 
 ## نکات
 - مخزن باید در Releases فایل `.apk` داشته باشد. اگر چند APK باشد، متناسب با معماری گوشی انتخاب می‌شود.

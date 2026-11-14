@@ -26,7 +26,11 @@ object Installer {
         aliases[abi].orEmpty().any { name.contains(it) } &&
             !(abi == "x86" && name.contains("x86_64"))
 
-    /** Picks the APK that best fits this device (its ABI first, then universal). */
+    /**
+     * Picks the APK that fits this device: its own ABI first (best ABI first),
+     * then a universal build, then an APK with no ABI in its name.
+     * APKs built for other ABIs are never chosen. Returns null if nothing fits.
+     */
     fun pickAsset(assets: List<AssetInfo>): AssetInfo? {
         val apks = assets.filter { it.name.endsWith(".apk", true) && it.url.isNotBlank() }
         val abis = Build.SUPPORTED_ABIS.map { it.lowercase() }
@@ -40,7 +44,7 @@ object Installer {
                 else -> 50
             }
         }
-        return apks.maxByOrNull { score(it) }
+        return apks.map { it to score(it) }.filter { it.second > 0 }.maxByOrNull { it.second }?.first
     }
 
     suspend fun download(context: Context, asset: AssetInfo, onProgress: (Float) -> Unit): File =

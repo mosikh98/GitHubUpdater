@@ -26,7 +26,7 @@
     <string name="download_install">Download &amp; install</string>
     <string name="update_now">Update</string>
     <string name="downloading">Downloading… %1$d%%</string>
-    <string name="no_apk">No APK file in this release</string>
+    <string name="no_apk">No APK compatible with this phone in this release</string>
     <string name="open_github">GitHub</string>
     <string name="release_notes">Release notes</string>
     <string name="show_more">More</string>
@@ -49,4 +49,7 @@
     <string name="notif_channel">App updates</string>
     <string name="notif_one">Update available: %1$s</string>
     <string name="notif_many">%1$d updates available</string>
+    <string name="pick_app">Choose installed app</string>
+    <string name="search">Search</string>
+    <string name="status_package_unknown">Package not set</string>
 </resources>

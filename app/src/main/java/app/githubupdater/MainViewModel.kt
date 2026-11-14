@@ -97,6 +97,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return null
     }
 
+    /** Installed (non-system) apps, with the ones that look like [repo] first. */
+    @Suppress("DEPRECATION")
+    fun installedApps(repo: TrackedRepo): List<AppEntry> {
+        val pm = ctx.packageManager
+        val tokens = repo.name.lowercase().split(Regex("[^a-z0-9]+")).filter { it.length >= 3 }
+        fun score(a: AppEntry): Int {
+            val text = (a.label + " " + a.pkg).lowercase()
+            return tokens.count { text.contains(it) }
+        }
+        return pm.getInstalledApplications(0)
+            .filter { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
+            .map { AppEntry(pm.getApplicationLabel(it).toString(), it.packageName) }
+            .sortedWith(compareByDescending<AppEntry> { score(it) }.thenBy { it.label.lowercase() })
+    }
+
     fun remove(key: String) {
         store.update { list -> list.filter { it.key != key } }
         reload()
