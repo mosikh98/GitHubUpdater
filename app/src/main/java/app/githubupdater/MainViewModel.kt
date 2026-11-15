@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         reload()
+        autoDetect()
         checkAll()
     }
 
@@ -54,7 +56,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Called when the app comes back to the foreground (an install may have finished). */
-    fun refreshInstalled() = reload()
+    fun refreshInstalled() {
+        reload()
+        autoDetect()
+    }
 
     fun checkAll() {
         if (_state.value.refreshingAll) return
@@ -97,19 +102,41 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return null
     }
 
-    /** Installed (non-system) apps, with the ones that look like [repo] first. */
     @Suppress("DEPRECATION")
-    fun installedApps(repo: TrackedRepo): List<AppEntry> {
+    private fun listInstalled(): List<AppEntry> {
         val pm = ctx.packageManager
+        return pm.getInstalledApplications(0)
+            .filter { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
+            .map { AppEntry(pm.getApplicationLabel(it).toString(), it.packageName) }
+    }
+
+    /** Installed (non-system) apps, with the ones that look like [repo] first. */
+    fun installedApps(repo: TrackedRepo): List<AppEntry> {
         val tokens = repo.name.lowercase().split(Regex("[^a-z0-9]+")).filter { it.length >= 3 }
         fun score(a: AppEntry): Int {
             val text = (a.label + " " + a.pkg).lowercase()
             return tokens.count { text.contains(it) }
         }
-        return pm.getInstalledApplications(0)
-            .filter { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
-            .map { AppEntry(pm.getApplicationLabel(it).toString(), it.packageName) }
+        return listInstalled()
             .sortedWith(compareByDescending<AppEntry> { score(it) }.thenBy { it.label.lowercase() })
+    }
+
+    /** Fills in the package name of repos that have none, when exactly one installed app clearly matches. */
+    private fun autoDetect() {
+        if (store.load().none { it.packageName == null }) return
+        viewModelScope.launch(Dispatchers.Default) {
+            val pending = store.load().filter { it.packageName == null }
+            val found = AppMatcher.match(pending, listInstalled())
+            if (found.isNotEmpty()) {
+                store.update { list ->
+                    list.map { r ->
+                        val pkg = found[r.key]
+                        if (r.packageName == null && pkg != null) r.copy(packageName = pkg) else r
+                    }
+                }
+                reload()
+            }
+        }
     }
 
     fun remove(key: String) {

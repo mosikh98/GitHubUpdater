@@ -21,6 +21,8 @@ data class TrackedRepo(
     /** Release tag + the APK versionName we last downloaded for it. */
     val apkTag: String? = null,
     val apkVersion: String? = null,
+    /** True once we already tried to read the package name from the repo's Gradle files. */
+    val pkgTried: Boolean = false,
 ) {
     val fullName: String get() = "$owner/$name"
     val key: String get() = fullName.lowercase()

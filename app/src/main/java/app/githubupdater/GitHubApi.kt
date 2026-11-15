@@ -2,9 +2,11 @@ package app.githubupdater
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
+import java.net.URLEncoder
 import java.net.URL
 
 object GitHubApi {
@@ -40,6 +42,40 @@ object GitHubApi {
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 if (!o.optBoolean("draft")) return@withContext parseRelease(o)
+            }
+            null
+        }
+
+    /**
+     * Reads `applicationId` from the repo's app/build.gradle(.kts), like Obtainium does
+     * (it also handles .kts files and nested folders such as V2rayNG/app/).
+     * Returns null if not found; throws on network / rate-limit problems so the caller can retry later.
+     */
+    suspend fun inferPackageName(owner: String, repo: String, token: String): String? =
+        withContext(Dispatchers.IO) {
+            val base = "https://api.github.com/repos/$owner/$repo"
+            val tree = get("$base/git/trees/HEAD?recursive=1", token)
+            if (tree.code == 403 || tree.code == 429) throw failure(tree.code)
+            if (tree.code != 200) return@withContext null
+            val arr = JSONObject(tree.body).optJSONArray("tree") ?: return@withContext null
+            val candidates = (0 until arr.length())
+                .mapNotNull { arr.getJSONObject(it).str("path") }
+                .filter { it.endsWith("build.gradle") || it.endsWith("build.gradle.kts") }
+                .filter { it.substringBeforeLast('/', "").substringAfterLast('/') == "app" }
+                .sortedBy { p -> p.count { it == '/' } }
+                .take(4)
+            val regex = Regex("""applicationId\s*=?\s*["']([^"'$]+)["']""")
+            for (path in candidates) {
+                val encoded = path.split('/').joinToString("/") {
+                    URLEncoder.encode(it, "UTF-8").replace("+", "%20")
+                }
+                val r = get("$base/contents/$encoded", token)
+                if (r.code == 403 || r.code == 429) throw failure(r.code)
+                if (r.code != 200) continue
+                val content = JSONObject(r.body).str("content") ?: continue
+                val text = String(Base64.decode(content, Base64.DEFAULT), Charsets.UTF_8)
+                val found = regex.find(text)?.groupValues?.get(1)
+                if (found != null) return@withContext found
             }
             null
         }

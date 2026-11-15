@@ -64,12 +64,69 @@ object UpdateChecker {
         } catch (e: Exception) {
             error = "other"
         }
+        // Once per repo: try to learn the Android package name from its Gradle files.
+        var pkg: String? = null
+        var tried = false
+        if (repo.packageName == null && !repo.pkgTried && error == null) {
+            try {
+                pkg = GitHubApi.inferPackageName(repo.owner, repo.name, store.token)
+                tried = true
+            } catch (e: Exception) {
+                // network / rate limit: try again on the next check
+            }
+        }
         val now = System.currentTimeMillis()
         store.update { list ->
             list.map {
-                if (it.key == key) it.copy(latest = release ?: it.latest, error = error, lastChecked = now)
-                else it
+                if (it.key == key) it.copy(
+                    latest = release ?: it.latest,
+                    error = error,
+                    lastChecked = now,
+                    packageName = it.packageName ?: pkg,
+                    pkgTried = it.pkgTried || tried,
+                ) else it
             }
         }
+    }
+}
+
+/** Matches repos to installed apps by name. Only unambiguous one-to-one matches are returned. */
+object AppMatcher {
+    private val noise = listOf("android", "mobile", "app", "apk")
+
+    private fun norm(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
+
+    private fun repoKey(name: String): String {
+        var n = name.lowercase().split(Regex("[^a-z0-9]+"))
+            .filter { it.isNotEmpty() && it !in noise }.joinToString("")
+        for (w in noise) if (n.endsWith(w) && n.length >= w.length + 4) n = n.removeSuffix(w)
+        return n
+    }
+
+    private fun score(repo: String, app: AppEntry): Int {
+        if (repo.length < 4) return 0
+        fun m(x: String) = when {
+            x.length < 4 -> 0
+            x == repo -> 3
+            repo.contains(x) || x.contains(repo) -> 2
+            else -> 0
+        }
+        return maxOf(m(norm(app.label)), m(norm(app.pkg.substringAfterLast('.'))))
+    }
+
+    /** Returns repo key -> package name. */
+    fun match(repos: List<TrackedRepo>, apps: List<AppEntry>): Map<String, String> {
+        val candidates = repos.associate { r ->
+            val rk = repoKey(r.name)
+            val scored = apps.map { it to score(rk, it) }.filter { it.second >= 2 }
+            val top = scored.maxOfOrNull { it.second }
+            r.key to scored.filter { it.second == top }.map { it.first.pkg }
+        }
+        val usage = candidates.values.flatten().groupingBy { it }.eachCount()
+        val result = HashMap<String, String>()
+        for ((key, pkgs) in candidates) {
+            if (pkgs.size == 1 && usage[pkgs[0]] == 1) result[key] = pkgs[0]
+        }
+        return result
     }
 }

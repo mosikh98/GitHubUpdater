@@ -67,6 +67,7 @@ class RepoStore(context: Context) {
         o.put("lastChecked", lastChecked)
         apkTag?.let { o.put("apkTag", it) }
         apkVersion?.let { o.put("apkVersion", it) }
+        if (pkgTried) o.put("pkgTried", true)
         latest?.let { r ->
             val a = JSONArray()
             r.assets.forEach { s ->
@@ -106,6 +107,7 @@ class RepoStore(context: Context) {
             lastChecked = o.optLong("lastChecked"),
             apkTag = o.str("apkTag"),
             apkVersion = o.str("apkVersion"),
+            pkgTried = o.optBoolean("pkgTried"),
         )
     }
 
